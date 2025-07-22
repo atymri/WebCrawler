@@ -1,118 +1,77 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
-using System.Drawing;
+using Colorful;
+using WebCrawler.Services;
+using WebCrawler.Utils;
 using Console = Colorful.Console;
-using System.Linq;
 
 class Program
 {
-    private static readonly HttpClient httpClient = new HttpClient();
-    private static readonly HashSet<string> visited = new HashSet<string>();
-    private static readonly List<string> foundLinks = new List<string>();
-
-    static async Task Main(string[] args)
+    static async Task Main()
     {
-        ClearScreen();
-        DisplayBanner();
+        Console.Clear();
+        Console.WriteAscii("Web Crawler", System.Drawing.Color.LimeGreen);
 
-        Console.Write("Enter the starting URL: ");
+        Console.WriteLine("Enter the starting URL:", System.Drawing.Color.Cyan);
         string startUrl = Console.ReadLine()?.Trim() ?? "";
 
         if (!Uri.IsWellFormedUriString(startUrl, UriKind.Absolute))
         {
-            Console.WriteLine("Invalid URL format.", Color.Red);
+            Console.WriteLine("Invalid URL format.", System.Drawing.Color.Red);
             return;
         }
 
-        await CrawlAsync(startUrl);
+        var urlHelper = GetUrlFilterSettingsFromUser();
+        var crawler = new QueueCrawlerService(urlHelper);
 
-        SaveLinksToFile("crawled_links.txt");
+        await crawler.CrawlAsync(startUrl);
 
-        Console.WriteLine($"Crawling completed!", Color.Green);
-        Console.WriteLine($"Total links visited: {visited.Count}", Color.LimeGreen);
+        FileHelper.SaveLinksToFile(crawler.VisitedUrls, "crawled_links.txt");
+
+        Console.WriteLine(new string('-', 40), System.Drawing.Color.Gray);
+        Console.WriteLine($"Crawling completed!", System.Drawing.Color.LimeGreen);
+        Console.WriteLine($"Total links visited: {crawler.VisitedUrls.Count}", System.Drawing.Color.Yellow);
+
+        Console.WriteLine("Press any key to exit...");
+        Console.ReadKey();
     }
-
-    static void ClearScreen()
+    public static UrlHelper GetUrlFilterSettingsFromUser()
     {
-        Console.Clear();
-    }
+        Console.Write("Enter allowed domain (e.g. example.com) or leave empty for no domain filter: ");
+        string allowedDomain = Console.ReadLine()?.Trim();
 
-    static void DisplayBanner()
-    {
-       
-        Console.WriteLine("Web Crawler - 1.0.0.0", Color.LimeGreen);
-    }
+        Console.Write("Enter allowed extensions separated by commas (e.g. .html,.php,/) or leave empty: ");
+        string allowedExtensionsInput = Console.ReadLine() ?? "";
+        var allowedExtensions = allowedExtensionsInput
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
 
-    static async Task CrawlAsync(string url)
-    {
-        if (visited.Contains(url))
-            return;
+        Console.Write("Enter include keywords separated by commas (e.g. /blog/,/product/) or leave empty: ");
+        string includeKeywordsInput = Console.ReadLine() ?? "";
+        var includeKeywords = includeKeywordsInput
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
 
-        visited.Add(url);
-        Console.WriteLine($"Visiting: {url}", Color.DarkGray);
+        Console.Write("Enter exclude keywords separated by commas (e.g. logout,session) or leave empty: ");
+        string excludeKeywordsInput = Console.ReadLine() ?? "";
+        var excludeKeywords = excludeKeywordsInput
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
 
-        try
+        bool noFilters = string.IsNullOrEmpty(allowedDomain)
+                 && !allowedExtensions.Any()
+                 && !includeKeywords.Any()
+                 && !excludeKeywords.Any();
+
+        if (noFilters)
         {
-            var response = await httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            var content = await response.Content.ReadAsStringAsync();
-
-            var doc = new HtmlDocument();
-            doc.LoadHtml(content);
-
-            var links = doc.DocumentNode.SelectNodes("//a[@href]");
-            if (links != null)
-            {
-                foreach (var link in links)
-                {
-                    var hrefValue = link.GetAttributeValue("href", string.Empty);
-                    if (string.IsNullOrEmpty(hrefValue))
-                        continue;
-
-                    // Combine relative URLs with base
-                    Uri baseUri = new Uri(url);
-                    Uri resultUri;
-                    if (Uri.TryCreate(baseUri, hrefValue, out resultUri))
-                    {
-                        string absoluteUrl = resultUri.ToString();
-                        Console.WriteLine($"Found link: {absoluteUrl}", Color.Lime);
-                        foundLinks.Add(absoluteUrl);
-
-                        // Recursively crawl, but limit depth or domain if desired to avoid infinite crawling
-                        await CrawlAsync(absoluteUrl);
-                    }
-                }
-            }
+            Console.WriteLine("No filters applied, crawling all URLs.", System.Drawing.Color.Yellow);
         }
-        catch (HttpRequestException e)
-        {
-            Console.WriteLine($"Error: {e.Message}", Color.Red);
-        }
-        catch (TaskCanceledException)
-        {
-            Console.WriteLine($"Timeout or canceled request for {url}", Color.Red);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Unexpected error: {ex.Message}", Color.Red);
-        }
-    }
 
-    static void SaveLinksToFile(string filename)
-    {
-        try
-        {
-            File.WriteAllLines(filename, visited);
-            Console.WriteLine($"Links saved to {filename}", Color.Blue);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine($"Failed to save links: {e.Message}", Color.Red);
-        }
+        return new UrlHelper(
+            allowedDomain: string.IsNullOrEmpty(allowedDomain) ? null : allowedDomain,
+            allowedExtensions: allowedExtensions,
+            includeKeywords: includeKeywords,
+            excludeKeywords: excludeKeywords);
     }
 }
