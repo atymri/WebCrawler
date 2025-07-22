@@ -1,23 +1,52 @@
 # WebCrawler
 
-A simple C# console application that crawls a website starting from a URL, collects all links, and saves them to a file.
+A powerful and extensible C# console web crawler that recursively visits URLs, supports filtering, and exports discovered links to a file.
 
 ## Features
 
-- Recursively visits links on a website
-- Saves all discovered links to a text file
+* Recursive link crawling with domain-relative expansion
+* URL filtering (domain, file extensions, keywords to include/exclude)
+* Queue-based scheduling with concurrency control
+* Export results to `crawled_links.txt`
+* Interactive CLI for user-defined filters
+* Console output with colored highlights
 
-## Usage
+## Getting Started
 
-1. Run the program.
-2. Enter the starting URL.
-3. The program will crawl and save links to `crawled_links.txt`.
+### Prerequisites
 
-## Requirements
+* .NET 6 SDK or newer
+* Internet connection
 
-- .NET 6 or newer
-- Internet connection
+### Build and Run
+
+```bash
+cd src/WebCrawler
+dotnet run
+```
+
+### Usage
+
+1. You will be prompted to enter a starting URL.
+2. Optionally, enter filtering criteria:
+
+   * Allowed domain (e.g., `example.com`)
+   * Allowed extensions (`.html`, `.php`, etc.)
+   * Keywords to include or exclude in URLs
+3. The crawler will process the site and save all valid links to `crawled_links.txt`.
+
+## Customization
+
+You can modify filters or concurrency settings inside:
+
+* `QueueCrawlerService.cs` — crawling logic
+* `UrlHelper.cs` — filtering logic
+
+## Screenshots
+
+![WebCrawler](screenshot1.png)
+
 
 ## License
 
-MIT License
+MIT License — use freely, modify boldly.
