@@ -2,6 +2,10 @@
 
 A powerful and extensible C# console web crawler that recursively visits URLs, supports filtering, and exports discovered links to a file.
 
+## Screenshots
+
+![WebCrawler](screenshot1.png)
+
 ## Features
 
 * Recursive link crawling with domain-relative expansion
@@ -41,11 +45,6 @@ You can modify filters or concurrency settings inside:
 
 * `QueueCrawlerService.cs` — crawling logic
 * `UrlHelper.cs` — filtering logic
-
-## Screenshots
-
-![WebCrawler](screenshot1.png)
-
 
 ## License
 
